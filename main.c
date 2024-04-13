@@ -20,13 +20,12 @@
 #include <cairo/cairo.h>
 #include <cairo/cairo-ft.h>
 
-#define NUM_EXAMPLES 3
+#define NUM_EXAMPLES 4
 #define FONT_SIZE 40
 
 const char *texts[NUM_EXAMPLES] = {
     "This is some english text",
-    "هذه بعض النصوص العربية",
-    "這是一些中文",
+    "🏥🍸💠🌒💃🎻🌍🐠📷👟🔀💙🐠",
 };
 
 const int text_directions[NUM_EXAMPLES] = {

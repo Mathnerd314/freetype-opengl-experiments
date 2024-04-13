@@ -17,24 +17,22 @@
 #include <vector>
 
 #include "./constants.h"
-#include "./shaping_cache.h"
 
 namespace face_collection {
-using shaping_cache::CodePointsFacePair;
-using shaping_cache::ShapingCache;
 using std::get;
 using std::make_tuple;
 using std::string;
 using std::tuple;
 using std::vector;
 
-using SizedFace = tuple<FT_Face, GLsizei, GLsizei>;
+struct SizedFace {
+  FT_Face face;
+  hb_font_t* hb_ft_font;
+  GLsizei width, height;
+};
 using FaceCollection = vector<SizedFace>;
 
 FaceCollection LoadFaces(FT_Library ft, const vector<string> &face_names);
-void AssignCodepointsFaces(const string &text, const FaceCollection &faces,
-                           CodePointsFacePair *codepoint_faces_pair,
-                           hb_buffer_t *buf);
 
 }  // namespace face_collection
 

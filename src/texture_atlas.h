@@ -9,6 +9,7 @@
 #include FT_LCD_FILTER_H
 
 #include <harfbuzz/hb.h>
+typedef hb_codepoint_t hb_glyph_id_t; // confusingly, the same type
 
 #include <glad/glad.h>
 
@@ -23,6 +24,7 @@ using std::pair;
 using std::unordered_map;
 using std::vector;
 
+
 struct Character {
   size_t texture_array_index;
   glm::vec2 texture_coordinates;
@@ -35,6 +37,8 @@ struct Character {
   bool colored;
 };
 
+typedef vector<unsigned char> bitmap_buffer_t;
+
 class TextureAtlas {
  private:
   typedef struct {
@@ -46,7 +50,7 @@ class TextureAtlas {
   GLuint texture_;
   GLsizei textureWidth_, textureHeight_;
 
-  unordered_map<hb_codepoint_t, cache_element_t> texture_cache_;
+  unordered_map<hb_glyph_id_t, cache_element_t> texture_cache_;
   GLenum format_;
 
  public:
@@ -57,23 +61,23 @@ class TextureAtlas {
 
   ~TextureAtlas();
 
-  void Insert(const vector<unsigned char>& bitmap_buffer, GLsizei width,
+  void Insert(const bitmap_buffer_t& bitmap_buffer, GLsizei width,
               GLsizei height, Character* ch, GLuint offset);
 
-  void Append(pair<Character, vector<unsigned char>>* p,
-              hb_codepoint_t codepoint);
+  void Append(pair<Character, bitmap_buffer_t>* p,
+              hb_glyph_id_t glyph_id);
 
-  void Replace(pair<Character, vector<unsigned char>>* p, hb_codepoint_t stale,
-               hb_codepoint_t codepoint);
+  void Replace(pair<Character, bitmap_buffer_t>* p, hb_glyph_id_t stale,
+               hb_glyph_id_t glyph_id);
 
-  bool Contains(hb_codepoint_t codepoint) const;
+  bool Contains(hb_glyph_id_t glyph_id) const;
 
-  Character* Get(hb_codepoint_t codepoint);
-  void Insert(hb_codepoint_t codepoint,
-              pair<Character, vector<unsigned char>>* ch);
+  Character* Get(hb_glyph_id_t glyph_id);
+  void Insert(hb_glyph_id_t glyph_id,
+              pair<Character, bitmap_buffer_t>* ch);
 
-  pair<Character, vector<unsigned char>> RenderGlyph(FT_Face face,
-                                                     hb_codepoint_t codepoint);
+  pair<Character, bitmap_buffer_t> RenderGlyph(FT_Face face,
+                                                     hb_glyph_id_t glyph_id);
 
   bool IsFull() const;
 

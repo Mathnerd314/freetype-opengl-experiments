@@ -7,7 +7,8 @@ State::State(unsigned int width, unsigned int height, unsigned int line_height,
     : width_(width),
       height_(height),
       line_height_(line_height),
-      start_line_(start_line) {
+      start_line_(start_line),
+      mode(MODE_PROPORTIONAL) {
   RecalculateVisibleLines();
 }
 

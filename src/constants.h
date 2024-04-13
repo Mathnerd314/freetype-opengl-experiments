@@ -9,7 +9,7 @@ static const unsigned int kFontPixelHeight = 17;
 static const unsigned int kFontPixelWidth = kFontPixelHeight - 1;
 static const unsigned int kLineHeight =
     static_cast<int>(kFontPixelHeight * 1.35);  // Copied from VSCode's code
-static const char kWindowTitle[] = "OpenGL";
+static const char kWindowTitle[] = "Text Demo";
 
 // Dark+
 #define FOREGROUND_COLOR 220. / 255, 218. / 255, 172. / 255, 1.0f

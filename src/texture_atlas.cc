@@ -29,7 +29,7 @@ TextureAtlas::TextureAtlas(GLsizei textureWidth, GLsizei textureHeight,
 }
 TextureAtlas::~TextureAtlas() { glDeleteTextures(1, &texture_); }
 
-void TextureAtlas::Insert(const vector<unsigned char>& bitmap_buffer,
+void TextureAtlas::Insert(const bitmap_buffer_t& bitmap_buffer,
                           GLsizei width, GLsizei height, Character* ch,
                           GLuint offset) {
   assert(static_cast<GLsizei>(offset) < kTextureDepth);
@@ -50,7 +50,7 @@ void TextureAtlas::Insert(const vector<unsigned char>& bitmap_buffer,
   ch->texture_coordinates = v;
 }
 
-void TextureAtlas::Append(std::pair<Character, vector<unsigned char>>* p,
+void TextureAtlas::Append(std::pair<Character, bitmap_buffer_t>* p,
                           hb_codepoint_t codepoint) {
   Insert(p->second, p->first.size.x, p->first.size.y, &p->first, index_++);
 
@@ -59,7 +59,7 @@ void TextureAtlas::Append(std::pair<Character, vector<unsigned char>>* p,
   item.fresh = true;
 }
 
-void TextureAtlas::Replace(std::pair<Character, vector<unsigned char>>* p,
+void TextureAtlas::Replace(std::pair<Character, bitmap_buffer_t>* p,
                            hb_codepoint_t stale, hb_codepoint_t codepoint) {
   Insert(p->second, p->first.size.x, p->first.size.y, &p->first,
          texture_cache_[stale].character.texture_array_index);
@@ -85,7 +85,7 @@ Character* TextureAtlas::Get(hb_codepoint_t codepoint) {
 }
 
 void TextureAtlas::Insert(hb_codepoint_t codepoint,
-                          pair<Character, vector<unsigned char>>* ch) {
+                          pair<Character, bitmap_buffer_t>* ch) {
   assert(!IsFull() || Contains_stale());
 
   if (!IsFull()) {

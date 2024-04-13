@@ -22,7 +22,6 @@ using std::string;
 using std::vector;
 typedef struct {
   GLuint shader_program_id;
-  const vector<string> *lines;
   state::State *state;
 } glfw_user_pointer_t;
 
@@ -31,7 +30,7 @@ void KeyCallback(GLFWwindow *window, int key, int scancode UNUSED, int action,
   auto obj =
       static_cast<glfw_user_pointer_t *>(glfwGetWindowUserPointer(window));
   auto state = obj->state;
-  auto lines = obj->lines;
+  auto lines = state->lines;
   if ((key == GLFW_KEY_DOWN || key == GLFW_KEY_J) &&
       (action == GLFW_PRESS || action == GLFW_REPEAT)) {
     if ((state->GetStartLine() + state->GetVisibleLines() + 1) <=
@@ -45,6 +44,9 @@ void KeyCallback(GLFWwindow *window, int key, int scancode UNUSED, int action,
     if ((state->GetStartLine() - 1) >= 0) {
       state->GoDown(1);
     }
+  }
+  if ((key == GLFW_KEY_M) && (action == GLFW_PRESS)) {
+    state->NextMode();
   }
   if ((key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q) && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, true);
@@ -63,9 +65,9 @@ void ScrollCallback(GLFWwindow *window, double xoffset UNUSED, double yoffset) {
 
   glfw_user_pointer_t *obj =
       static_cast<glfw_user_pointer_t *>(glfwGetWindowUserPointer(window));
-  auto lines = obj->lines;
-
   auto state = obj->state;
+  auto lines = state->lines;
+
   if (yoffset > 0) {  // going up
     if ((state->GetStartLine() - lines_to_scroll) >= 0) {
       state->GoDown(lines_to_scroll);

@@ -2,12 +2,37 @@
 #ifndef SRC_STATE_H_
 #define SRC_STATE_H_
 
+#include <vector>
+#include <string>
+using std::vector;
+using std::string;
+
+enum rmode_t {
+  MODE_MONOSPACE,
+  MODE_PROPORTIONAL,
+  MODE_ALL_ALIGNED,
+  MODE_NEARBY_ALIGNED,
+  MODES_END
+};
+
 namespace state {
+
 class State {
  public:
   State(unsigned int width, unsigned int height, unsigned int line_height,
         int start_line);
   ~State();
+  void NextMode() {
+    mode = (rmode_t)((int)mode + 1);
+    if(mode == MODES_END) {
+      mode = MODE_PROPORTIONAL;
+    }
+    switch(mode) {
+      case MODE_PROPORTIONAL: printf("mode proportional\n"); break;
+      case MODE_ALL_ALIGNED: printf("mode all aligned\n"); break;
+      case MODE_NEARBY_ALIGNED: printf("mode nearby aligned\n"); break;
+    }
+  }
   void UpdateDimensions(unsigned int width, unsigned int height) {
     width_ = width;
     height_ = height;
@@ -21,6 +46,8 @@ class State {
   void GoUp(unsigned int amount);
   void GotoBeginning();
   void GotoEnd(unsigned int lines_count);
+  const vector<string> *lines;
+  rmode_t mode;
 
  private:
   unsigned int width_;

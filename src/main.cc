@@ -9,16 +9,23 @@
 
 // glad - OpenGL loader
 #include <glad/glad.h>
+
+// fontconfig
+#include <fontconfig/fontconfig.h>
+
 // FreeType
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_LCD_FILTER_H
+#include <freetype/ftadvanc.h>
+#include <freetype/ftsnames.h>
+#include <freetype/tttables.h>
 
 #include <GLFW/glfw3.h>
 
 // HarfBuzz
 #include <harfbuzz/hb.h>
-// HarfBuzz FreeTpe
+// HarfBuzz FreeType
 #include <harfbuzz/hb-ft.h>
 
 #include <fstream>
@@ -43,8 +50,7 @@ namespace lettera {
 using face_collection::FaceCollection;
 using face_collection::LoadFaces;
 using renderer::Render;
-using shaping_cache::CodePointsFacePair;
-using shaping_cache::ShapingCache;
+using renderer::ShapingCache;
 using state::State;
 using std::get;
 using std::make_pair;
@@ -128,6 +134,59 @@ int main(int argc UNUSED, char **argv) {
   // Set which filter to use for the LCD Subpixel Antialiasing
   FT_Library_SetLcdFilter(ft, FT_LCD_FILTER_DEFAULT);
 
+  /* Load our fonts */
+  // Init font config
+  FcInit(); //initializes Fontconfig
+  FcConfig* config = FcInitLoadConfigAndFonts();
+  assert(config);
+
+  FcPattern* pat = FcNameParse((const FcChar8*)"Noto Sans");
+
+  // Increase the possible matches
+  FcConfigSubstitute(config, pat, FcMatchPattern);
+  FcDefaultSubstitute(pat);
+
+  FcResult result;
+
+  FcPattern* font = FcFontMatch(config, pat, &result);
+  assert(font);
+
+  /* Will be freed with font */
+  FcChar8* font_file = NULL;
+
+  if(FcPatternGetString(font, FC_FILE, 0, &font_file) != FcResultMatch) {
+    fprintf(stderr, "Could not find font\n");
+    exit(EXIT_FAILURE);
+  }
+  printf("Found font: %s\n", (char*) font_file);
+
+  // TODO(andrea): make this support multiple fonts with font fallback
+  vector<string> face_names{string((char*)font_file),
+                            "./assets/fonts/NotoColorEmoji.ttf",
+                            "./assets/fonts/FiraCode-Retina.ttf"};
+  FaceCollection faces = LoadFaces(ft, face_names);
+
+  /* Cleanup font config */
+  FcPatternDestroy(font);
+  FcPatternDestroy(pat);
+  FcConfigDestroy(config);
+  FcFini();
+
+  // Load the texture atlases
+  TextureAtlas monochrome_texture_atlas(
+      faces[0].width, faces[0].height, shader.programId,
+      "monochromatic_texture_array", GL_RGB8, GL_RGB, 0);
+  TextureAtlas colored_texture_atlas(faces[1].width, faces[1].height,
+                                     shader.programId, "colored_texture_array",
+                                     GL_RGBA8, GL_BGRA, 1);
+  TextureAtlas monochrome_texture_atlas_2(
+      faces[2].width, faces[2].height, shader.programId,
+      "monochromatic_texture_array_2", GL_RGB8, GL_RGB, 2);
+  vector<TextureAtlas *> texture_atlases;
+  texture_atlases.push_back(&monochrome_texture_atlas);
+  texture_atlases.push_back(&colored_texture_atlas);
+  texture_atlases.push_back(&monochrome_texture_atlas_2);
+
   // Read the file
   vector<string> lines;
   {
@@ -138,46 +197,41 @@ int main(int argc UNUSED, char **argv) {
     }
     assert(lines.size() > 0);
   }
-  glfw_user_pointer.lines = &lines;
-
-  // Load the fonts
-  // TODO(andrea): make this support multiple fonts
-  vector<string> face_names{"./assets/fonts/FiraCode-Retina.ttf",
-                            "./assets/fonts/NotoColorEmoji.ttf"};
-  FaceCollection faces = LoadFaces(ft, face_names);
-  // And the texture atlases
-  TextureAtlas monochrome_texture_atlas(
-      get<1>(faces[0]), get<2>(faces[0]), shader.programId,
-      "monochromatic_texture_array", GL_RGB8, GL_RGB, 0);
-  TextureAtlas colored_texture_atlas(get<1>(faces[1]), get<2>(faces[1]),
-                                     shader.programId, "colored_texture_array",
-                                     GL_RGBA8, GL_BGRA, 1);
-  vector<TextureAtlas *> texture_atlases;
-  texture_atlases.push_back(&monochrome_texture_atlas);
-  texture_atlases.push_back(&colored_texture_atlas);
+  glfw_user_pointer.state->lines = &lines;
 
   // TODO(andrea): invalidation and capacity logic (LRU?, Better Hashmap?)
-  // Init Shaping cache
-  ShapingCache shaping_cache(state.GetVisibleLines());
+  // Init Shaping caches
+  ShapingCache shaping_cache_proportional = renderer::LayoutText(lines, faces, 0, MODE_PROPORTIONAL);
+  ShapingCache shaping_cache_mono = renderer::LayoutText(lines, faces, 2, MODE_MONOSPACE);
+  ShapingCache shaping_cache_all = renderer::LayoutText(lines, faces, 0, MODE_ALL_ALIGNED);
+  ShapingCache shaping_cache_nearby = renderer::LayoutText(lines, faces, 0, MODE_NEARBY_ALIGNED);
 
   while (!glfwWindowShouldClose(window.window)) {
     glfwWaitEvents();
 
     auto t1 = glfwGetTime();
 
-    Render(shader, lines, faces, &shaping_cache, texture_atlases, state, VAO,
-           VBO);
+    ShapingCache* shaping_cache;
+    switch(state.mode) {
+      case MODE_MONOSPACE: shaping_cache = &shaping_cache_mono; break;
+      case MODE_ALL_ALIGNED: shaping_cache = &shaping_cache_all; break;
+      case MODE_NEARBY_ALIGNED: shaping_cache = &shaping_cache_nearby; break;
+      case MODE_PROPORTIONAL:
+      default:
+       shaping_cache = &shaping_cache_proportional; break;
+    }
+
+    Render(shader, lines, faces, shaping_cache, texture_atlases, state, VAO, VBO, state.mode == MODE_MONOSPACE ? 2 : 0);
 
     auto t2 = glfwGetTime();
-    printf("Rendering lines took %f ms (%3.0f fps/Hz)\n", (t2 - t1) * 1000,
-           1.f / (t2 - t1));
+    printf("Rendering lines took %f ms (%3.0f fps/Hz)\n", (t2 - t1) * 1000, 1.f / (t2 - t1));
 
     // Swap buffers when drawing is finished
     glfwSwapBuffers(window.window);
   }
 
   for (auto &face : faces) {
-    FT_Done_Face(get<0>(face));
+    FT_Done_Face(face.face);
   }
 
   FT_Done_FreeType(ft);
